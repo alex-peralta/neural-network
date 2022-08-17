@@ -107,7 +107,7 @@ class MLP():
 myNet=MLP()
 
 
-'''
+
 learning_rate=1e-3
 n_epochs=100
 batch_size = 256
@@ -234,8 +234,9 @@ for row in W1:
         plt.axis('off')
         plt.show()
     counter += 1
-'''
 
+
+'''
 W1 = np.load('W1.npy')
 W2 = np.load('W2.npy')
 b1 = np.load('b1.npy')
@@ -259,7 +260,7 @@ for x in range(test_set_size):
 accuracy = 100.00 * correct / (correct + incorrect)
 
 print('Accuracy of the MLP network on the 5000 test images: %.2f %%' % (accuracy))
-
+'''
 
 ## Template for ConvNet Code
 import torch
@@ -291,7 +292,7 @@ class ConvNet(nn.Module):
 #Your training and testing code goes here
 net = ConvNet()
 #code below is the training code
-'''
+
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 training_num = 2048
@@ -371,8 +372,8 @@ print('Accuracy of the network on the 5000 test images: %d %%' % (
     100 * correct / total))
 
 torch.save(net.state_dict(), 'CNNweights.pth')
-'''
 
+'''
 pretrained_weights = torch.load('CNNweights.pth')
 net = ConvNet()
 net.load_state_dict(pretrained_weights)
@@ -390,6 +391,7 @@ with torch.no_grad():
 
 print('Accuracy of the CNN network on the 5000 test images: %.2f %%' % (
     100.0 * correct / total))
+'''
 
 
 
