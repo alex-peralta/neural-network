@@ -212,7 +212,7 @@ def save_weights_biases():
     np.save('b1.npy', myNet.b1)
     np.save('b2.npy', myNet.b2)
 
-def W1_weight_visualization():
+def weight_visualization_W1():
     W1 = np.load('W1.npy')
     visual = np.zeros(shape=(28,28))
 
@@ -289,6 +289,6 @@ save_weights_biases()
 
 
 
-W1_weight_visualization()
+weight_visualization_W1()
 
 check_accuracy_from_upload()
