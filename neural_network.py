@@ -12,12 +12,24 @@ val_labels_np=np.load('./train_and_test_data/MNIST_val_labels.npy')
 test_images_np=np.load('./train_and_test_data/MNIST_test_images.npy')
 test_labels_np=np.load('./train_and_test_data/MNIST_test_labels.npy')
 
-learning_rate=1e-3
-n_epochs=100
-batch_size = 256
-training_num = 50000
-validation_set_size = 5000
 
+N_EPOCHS=100
+BATCH_SIZE = 256
+TRAINING_NUM = 50000
+VALIDATION_SET_SIZE = 5000
+TEST_SET_SIZE = 5000
+IMAGE_PIXEL_LENGTH = 28
+IMAGE_PIXEL_WIDTH = 28
+INPUT_LAYER_NUM = IMAGE_PIXEL_LENGTH * IMAGE_PIXEL_WIDTH
+HIDDEN_LAYER_NUM = 64
+OUTPUT_LAYER_NUM = 10
+INITIAL_LEARNING_RATE = 1e-3
+ADAPTIVE_LEARNING_PERCENTAGE = 0.97
+
+
+
+training_line_graph_arr = np.zeros(N_EPOCHS)
+val_line_graph_arr = np.zeros(N_EPOCHS)
 
 #print(train_images_np.shape)
 #print(train_labels_np.shape)
@@ -35,10 +47,10 @@ class MLP():
 
     def __init__(self):
         mu, sigma = 0, 0.1
-        self.W1= np.random.normal(mu, sigma, 50176).reshape(64,784)
-        self.b1= np.zeros(64)
-        self.W2= np.random.normal(mu, sigma, 640).reshape(10,64)
-        self.b2= np.zeros(10)
+        self.W1= np.random.normal(mu, sigma, HIDDEN_LAYER_NUM * INPUT_LAYER_NUM).reshape(HIDDEN_LAYER_NUM, INPUT_LAYER_NUM)
+        self.b1= np.zeros(HIDDEN_LAYER_NUM)
+        self.W2= np.random.normal(mu, sigma, OUTPUT_LAYER_NUM * HIDDEN_LAYER_NUM).reshape(OUTPUT_LAYER_NUM,HIDDEN_LAYER_NUM)
+        self.b2= np.zeros(OUTPUT_LAYER_NUM)
         #self.loss = 0
         self.reset_grad()
 
@@ -71,7 +83,7 @@ class MLP():
         for val in dLdA2:
             curr = val * self.f1
             dLdW2 = np.concatenate((dLdW2, curr), axis=0)
-        dLdW2 = dLdW2.reshape(10, 64)
+        dLdW2 = dLdW2.reshape(OUTPUT_LAYER_NUM, HIDDEN_LAYER_NUM)
         #dLdW2 = np.transpose(dLdW2)
 
         # dLdW1
@@ -85,7 +97,7 @@ class MLP():
         for val in dLdA1:
             curr = val * self.x
             dLdW1 = np.concatenate((dLdW1, curr), axis=0)
-        dLdW1 = dLdW1.reshape(64, 784)
+        dLdW1 = dLdW1.reshape(HIDDEN_LAYER_NUM, INPUT_LAYER_NUM)
         #dLdW1 = np.transpose(dLdW1)
 
         # dA2db2
@@ -109,24 +121,25 @@ class MLP():
         #print(self.loss)
 
 
-def train_network():
+def train_validate_network():
+    learning_rate = INITIAL_LEARNING_RATE
     num = 0
     myNet.reset_grad()
 
-    for iter in range(n_epochs):
+    for iter in range(N_EPOCHS):
         #Code to train network goes here
         print(iter)
-        random_arr = np.arange(training_num)
+        random_arr = np.arange(TRAINING_NUM)
         np.random.shuffle(random_arr)
-        for r in range(training_num):
+        for r in range(TRAINING_NUM):
             x = random_arr[r]
 
             myNet.forward(train_images_np[x])
-            y =np.zeros(10)
+            y =np.zeros(OUTPUT_LAYER_NUM)
             y[train_labels_np[x]] = 1
             myNet.update_grad(y)
             num = num + 1
-            if num == batch_size:
+            if num == BATCH_SIZE:
                 myNet.update_params(learning_rate)
                 myNet.reset_grad()
                 #print(num)
@@ -140,7 +153,7 @@ def train_network():
         #Code to compute validation loss/accuracy goes here
         correct = 0
         incorrect = 0
-        for x in range(training_num):
+        for x in range(TRAINING_NUM):
             myNet.forward(train_images_np[x])
             predicted_value = np.argmax(myNet.y_hat)
             actual_value = train_labels_np[x]
@@ -153,7 +166,7 @@ def train_network():
 
         correct = 0
         incorrect = 0
-        for x in range(validation_set_size):
+        for x in range(VALIDATION_SET_SIZE):
             myNet.forward(val_images_np[x])
             predicted_value = np.argmax(myNet.y_hat)
             actual_value = val_labels_np[x]
@@ -164,14 +177,13 @@ def train_network():
         percentage = 100.00 * correct / (correct + incorrect)
         val_line_graph_arr[iter] = percentage
 
-        learning_rate = learning_rate *0.97
+        learning_rate = learning_rate * ADAPTIVE_LEARNING_PERCENTAGE
 
 def accuracy_and_confusion_matrix():
-    conf_matrx = np.zeros(100).reshape(10, 10)
-    test_set_size = 5000
+    conf_matrx = np.zeros(OUTPUT_LAYER_NUM**2).reshape(OUTPUT_LAYER_NUM, OUTPUT_LAYER_NUM)
     correct = 0
     incorrect = 0
-    for x in range(test_set_size):
+    for x in range(TEST_SET_SIZE):
         myNet.forward(test_images_np[x])
         predicted_value = np.argmax(myNet.y_hat)
         actual_value = test_labels_np[x]
@@ -185,7 +197,7 @@ def accuracy_and_confusion_matrix():
     print("accuracy")
     print(accuracy)
 
-    conf_matrx2 = np.zeros(shape=(10,10))
+    conf_matrx2 = np.zeros(shape=(OUTPUT_LAYER_NUM,OUTPUT_LAYER_NUM))
     counter = 0
     for row in conf_matrx:
         SUM = sum(row)
@@ -214,13 +226,13 @@ def save_weights_biases():
 
 def weight_visualization_W1():
     W1 = np.load('W1.npy')
-    visual = np.zeros(shape=(28,28))
+    visual = np.zeros(shape=(IMAGE_PIXEL_LENGTH,IMAGE_PIXEL_WIDTH))
 
     print(W1.shape)
     counter = 0
     for row in W1:
         if counter >= 0 and counter < 4:
-            visual = row.reshape(28,28)
+            visual = row.reshape(IMAGE_PIXEL_LENGTH,IMAGE_PIXEL_WIDTH)
             plt.imshow(visual)
             plt.axis('off')
             plt.show()
@@ -238,10 +250,9 @@ def check_accuracy_from_upload():
     myNet.b1 = b1
     myNet.b2 = b2
 
-    test_set_size = 5000
     correct = 0
     incorrect = 0
-    for x in range(test_set_size):
+    for x in range(TEST_SET_SIZE):
         myNet.forward(test_images_np[x])
         predicted_value = np.argmax(myNet.y_hat)
         actual_value = test_labels_np[x]
@@ -262,32 +273,13 @@ myNet=MLP()
 
 
 
-#n_epochs=1
-#batch_size = 1
-#training_num = 1
-## Training code
-training_line_graph_arr = np.zeros(100)
-val_line_graph_arr = np.zeros(100)
-
-
-train_network()
-
-# 2.6 and 2.7
-
-
-
+train_validate_network()
 
 accuracy_and_confusion_matrix()
-#2.5
 
 training_and_testing_graph()
 
-#2.8
-
-
 save_weights_biases()
-
-
 
 weight_visualization_W1()
 
