@@ -1,6 +1,5 @@
 
 import numpy as np
-import time
 import matplotlib.pyplot as plt
 
 
@@ -28,8 +27,8 @@ ADAPTIVE_LEARNING_PERCENTAGE = 0.97
 
 
 
-training_line_graph_arr = np.zeros(N_EPOCHS)
-val_line_graph_arr = np.zeros(N_EPOCHS)
+accuracy_training_set = np.zeros(N_EPOCHS)
+accuracy_validation_set = np.zeros(N_EPOCHS)
 
 #print(train_images_np.shape)
 #print(train_labels_np.shape)
@@ -45,11 +44,19 @@ def CrossEntropy(y_hat,y):
 
 class MLP():
 
+    '''
+    The network was initialized by creating W1 and W2 weight matrices and setting all values inside those matrices to
+    random gaussians with a standard deviation of 0.1. Bias vectors b1 and b2 were initialized to zero
+    '''
     def __init__(self):
         mu, sigma = 0, 0.1
+        # W1 is a 64x784 matrix of weights connecting the input layer and the hidden layer.
         self.W1= np.random.normal(mu, sigma, HIDDEN_LAYER_NUM * INPUT_LAYER_NUM).reshape(HIDDEN_LAYER_NUM, INPUT_LAYER_NUM)
+        # b1 is a  61x1 vector of biases corresponding to the hidden layer activations.
         self.b1= np.zeros(HIDDEN_LAYER_NUM)
+        # W2 is a 10x64 matrix of weights connecting the hidden layer and the output layer.
         self.W2= np.random.normal(mu, sigma, OUTPUT_LAYER_NUM * HIDDEN_LAYER_NUM).reshape(OUTPUT_LAYER_NUM,HIDDEN_LAYER_NUM)
+        # b2 is a 10x1 vector of biases corresponding to the output layer activations.
         self.b2= np.zeros(OUTPUT_LAYER_NUM)
         #self.loss = 0
         self.reset_grad()
@@ -61,8 +68,15 @@ class MLP():
         self.b1_grad = 0
         #self.loss = 0
 
+    '''
+    The forward pass of the network takes a 784x1 image vector as input, which we’ll call x. It multiples W1*x and adds 
+    that to the b1 bias vector to form a 64x1 activation vector a1, where each component of the vector is one of the 64 
+    hidden layer activations. The a1 vector is passed through a sigmoid function with the output being represented by a 
+    64x1 vector named f1. This vector is multiplied by the second weight matrix, W2 * f1, and added to the b2 bias 
+    vector the for a 10x1 activation vector a2. The a2 vector is passed through a softmax function with the output is a 
+    10x1 vector named y_hat. 
+    '''
     def forward(self, x):
-
         self.x=x
         self.W1x= np.dot(self.W1, self.x)
         self.a1= self.W1x + self.b1
@@ -120,63 +134,95 @@ class MLP():
         #self.loss = self.loss / 256
         #print(self.loss)
 
+def training_set_accuracy(epoch_num):
+    correct = 0
+    incorrect = 0
+    for i in range(TRAINING_NUM):
+        x_curr_image = train_images_np[i]
+        myNet.forward(x_curr_image)
+        predicted_value = np.argmax(myNet.y_hat)
+        actual_value = train_labels_np[i]
+        if predicted_value == actual_value:
+            correct += 1
+        else:
+            incorrect += 1
+    percentage_correct = 100.00 * correct / (correct + incorrect)
+    accuracy_training_set[epoch_num] = percentage_correct
+
+def validation_set_accuracy(epoch_num):
+    correct = 0
+    incorrect = 0
+    for i in range(VALIDATION_SET_SIZE):
+        x_curr_image = val_images_np[i]
+        myNet.forward(x_curr_image)
+        predicted_value = np.argmax(myNet.y_hat)
+        actual_value = val_labels_np[i]
+        if predicted_value == actual_value:
+            correct += 1
+        else:
+            incorrect += 1
+    percentage_correct = 100.00 * correct / (correct + incorrect)
+    accuracy_validation_set[epoch_num] = percentage_correct
 
 def train_validate_network():
     learning_rate = INITIAL_LEARNING_RATE
-    num = 0
+    # counter is used to keep of batch size
+    counter = 0
     myNet.reset_grad()
 
-    for iter in range(N_EPOCHS):
+    # this for loop iterates for a desired number of epochs. the larger number of epochs the more
+    # accurate the network becomes, but the training time takes longer.
+    for epoch_num in range(N_EPOCHS):
         #Code to train network goes here
-        print(iter)
+        print(epoch_num)
+
+
+        # For each epoch, random_arr shuffles numbers 1 through TRAINING_NUM in order for the network to train on
+        # the images in a random order
         random_arr = np.arange(TRAINING_NUM)
         np.random.shuffle(random_arr)
-        for r in range(TRAINING_NUM):
-            x = random_arr[r]
 
-            myNet.forward(train_images_np[x])
+        # this for loop iterates over the training set
+        for r in range(TRAINING_NUM):
+
+            # random ordered numbers corresponding to images are accessed one by one over the for loop and set to
+            # curr_index. This insures all images are used but in a random order.
+            curr_index = random_arr[r]
+
+            # the current image  goes through a forward pass of the network
+            x_curr_image = train_images_np[curr_index]
+            myNet.forward(x_curr_image)
+
+            # y is a vector that has the correct value of the current image. For example, if the current image was the
+            # number 3, then the y vector would be [0, 0, 0, 1, 0, 0, 0, 0, 0, 0] where the third index is set to 1.
             y =np.zeros(OUTPUT_LAYER_NUM)
-            y[train_labels_np[x]] = 1
+            curr_image_label = train_labels_np[curr_index]
+            y[curr_image_label] = 1
+
+            # the gradients are updated using y, the correct value of the current image.
             myNet.update_grad(y)
-            num = num + 1
-            if num == BATCH_SIZE:
+            counter = counter + 1
+
+            # When the counter equals the batch size, the network parameters are updated and the
+            # batch is reset.
+            if counter == BATCH_SIZE:
                 myNet.update_params(learning_rate)
                 myNet.reset_grad()
-                #print(num)
-                num = 0
+                #print(counter)
+                counter = 0
+
+        # batch size does not go into TRAINING_NUM evenly so code below is used to update params  for the last batch
+        # and reset gradients and counter for the next batch for the next epoch
         myNet.update_params(learning_rate)
         myNet.reset_grad()
-        #print(num)
-        num = 0
+        #print(counter)
+        counter = 0
 
+        #Call functions to compute accuracy of training and validation sets
+        training_set_accuracy(epoch_num)
+        validation_set_accuracy(epoch_num)
 
-        #Code to compute validation loss/accuracy goes here
-        correct = 0
-        incorrect = 0
-        for x in range(TRAINING_NUM):
-            myNet.forward(train_images_np[x])
-            predicted_value = np.argmax(myNet.y_hat)
-            actual_value = train_labels_np[x]
-            if predicted_value == actual_value:
-                correct += 1
-            else:
-                incorrect += 1
-        percentage = 100.00 * correct / (correct + incorrect)
-        training_line_graph_arr[iter] = percentage
-
-        correct = 0
-        incorrect = 0
-        for x in range(VALIDATION_SET_SIZE):
-            myNet.forward(val_images_np[x])
-            predicted_value = np.argmax(myNet.y_hat)
-            actual_value = val_labels_np[x]
-            if predicted_value == actual_value:
-                correct += 1
-            else:
-                incorrect += 1
-        percentage = 100.00 * correct / (correct + incorrect)
-        val_line_graph_arr[iter] = percentage
-
+        # update learning rate after each epoch
         learning_rate = learning_rate * ADAPTIVE_LEARNING_PERCENTAGE
 
 def accuracy_and_confusion_matrix():
@@ -208,10 +254,10 @@ def accuracy_and_confusion_matrix():
     print(conf_matrx2)
 
 def training_and_testing_graph():
-    x_axis_arr = np.arange(100)
+    x_axis_arr = np.arange(N_EPOCHS)
     plt.ylim([75,100])
-    plt.plot(x_axis_arr, training_line_graph_arr, label="Training")
-    plt.plot(x_axis_arr, val_line_graph_arr, label="Validation")
+    plt.plot(x_axis_arr, accuracy_training_set, label="Training")
+    plt.plot(x_axis_arr, accuracy_validation_set, label="Validation")
     plt.title('Training with 50,000 Images')
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy (%)')
@@ -270,8 +316,6 @@ def check_accuracy_from_upload():
 
 ## Init the MLP
 myNet=MLP()
-
-
 
 train_validate_network()
 
